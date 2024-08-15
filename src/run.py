@@ -1,12 +1,13 @@
 import os
 import csv
+import json
 from selenium import webdriver
 
 from prototypes import Component, ComponentType, ColumnName
-from TME_website import TME
+from TME_website import TME, Browser
 
 # global variables
-skip_to_browser = True
+skip_to_browser = False
 
 components = []
 file_path = None  # C:\Users\Grzesiek\Desktop\BOM_Buck-25W-V3-24VCharger_2024-08-07.csv
@@ -48,11 +49,11 @@ if not skip_to_browser:
 
                 for i, element in enumerate(row):
                     if list(ColumnName)[i].value == ColumnName.NAME.value:
-                        new_component_name = element
+                        new_component_name = str(element)
                     elif list(ColumnName)[i].value == ColumnName.DESIGNATOR.value:
                         new_component_designators = element.strip('"').split(",")
                     elif list(ColumnName)[i].value == ColumnName.FOOTPRINT.value:
-                        new_component_footprint = element
+                        new_component_footprint = str(element)
                     elif list(ColumnName)[i].value == ColumnName.QUANTITY.value:
                         new_component_quantity = int(element.strip('"'))
 
@@ -75,22 +76,53 @@ else:
     user_control = "Y"
 
 if user_control in ["y", "Y"]:
-    print("\n> Proceeding with web browser activity")
+    print("\n> Please select action [1 / 2]:")
+    print("1. Open browser\n2. Dump to file")
+    user_control = input()
+    if user_control == "1":
+        print("\n> Proceeding with web browser activity")
 
-    # browser setup
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("--disable-search-engine-choice-screen")
-    chrome_options.add_argument("--start-maximized")
-    browser = webdriver.Chrome(options=chrome_options)
+        # browser setup
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument("--disable-search-engine-choice-screen")
+        chrome_options.add_argument("--start-maximized")
+        browser = webdriver.Chrome(options=chrome_options)
 
-    # navigate to the login page
-    TME.wait_for_user_to_login(browser)
+        # navigate to the login page
+        # TME.wait_for_user_to_login(browser)
 
-    # TODO: - if koszyk is not empty, go and empty it
-    #  - if koszyk is empty, go into a loop for all components in a list
-    #  - loop: for each component - search for name, with available now filter selected and correct footprints
-    #  - if found, add it to cart, if found multiple select cheapest, if not found try to find similar
-    #  (or save what wasn't found for later)
+        search_string_first = "https://www.tme.eu/pl/katalog/?queryPhrase="
+        search_string_last = "&productListOrderDir=DESC&onlyInStock=1"
+        for index, component in enumerate(components):
+            search_string = search_string_first + component.name + search_string_last
+            browser.get(search_string)
+            Browser.wait_and_click(browser, TME.cookie_agree(), True)
+            browser.switch_to.new_window()
+
+        # TODO: - if koszyk is not empty, go and empty it
+        #  - if koszyk is empty, go into a loop for all components in a list
+        #  - loop: for each component - search for name, with available now filter selected and correct footprints
+        #  - if found, add it to cart, if found multiple select cheapest, if not found try to find similar
+        #  (or save what wasn't found for later)
+
+        print("> Press any key to exit:")
+        _ = input()
+
+    elif user_control == "2":
+        output_file_string_list = []
+        for index, component in enumerate(components):
+            output_file_string_list.append(component.printout(index, True))
+
+        file_content = {
+            "Component list": output_file_string_list
+        }
+        save_file_path = "/".join(file_path.split("/")[:-1])
+        if os.path.exists(os.path.join(save_file_path, "components.json")):
+            os.remove(f"{save_file_path}/components.json")
+        # with open('default_config.json', 'w') as f:
+        with open(os.path.join(save_file_path, "components.json"), "w") as f:
+            json.dump(file_content, f, indent=4)
+        print(f"> Component list saved to {os.path.join(save_file_path, "components.json")}")
 
 else:
     print("> List not correct, aborting...")

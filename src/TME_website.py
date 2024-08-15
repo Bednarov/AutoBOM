@@ -24,6 +24,15 @@ class TME:
     def login_modal() -> tuple: return "[class*='login-modal__container']", 3
 
     @staticmethod
+    def login_modal_username() -> tuple: return "[class*='input__container'] > input", 1
+
+    @staticmethod
+    def login_modal_password() -> tuple: return "[class*='input__container'] > input", 3
+
+    @staticmethod
+    def login_modal_submit_button() -> str: return "[data-testid*='submit-button']"
+
+    @staticmethod
     def logout_wrapper() -> str: return "[class*='logout-wrapper']"
 
     @staticmethod
@@ -33,6 +42,7 @@ class TME:
             Browser.wait_and_click(driver, TME.cookie_agree(), ignore_exception=True)
             Browser.wait_and_click(driver, TME.login_button())
             Browser.wait_for(driver, TME.login_modal())
+
             print("\n> Please login to TME. Press enter when done.")
             _ = input()
             if Browser.wait_for(driver, TME.logout_wrapper()) is False and Browser.wait_for(driver, TME.login_button()) is True:
@@ -59,7 +69,7 @@ class Browser:
             if isinstance(found, WebElement):
                 return found
             elif isinstance(found, list):
-                return found[locator[which_one]]
+                return found[which_one]
 
     @staticmethod
     def find_ignore_absence(driver: WebDriver, locator):
@@ -77,7 +87,7 @@ class Browser:
                 if isinstance(found, WebElement):
                     return found
                 elif isinstance(found, list):
-                    return found[locator[which_one]]
+                    return found[which_one]
             except NoSuchElementException:
                 return None
 
