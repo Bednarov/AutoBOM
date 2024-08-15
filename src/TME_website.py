@@ -51,11 +51,14 @@ class TME:
                 print("Login successfull")
                 break
 
+    @staticmethod
+    def product_symbol() -> str: return "[class='YvvzM']"
+
 
 class Browser:
     @staticmethod
     def wait_for_page():
-        sleep(1)
+        sleep(2)
 
     @staticmethod
     def find(driver: WebDriver, locator) -> WebElement:
@@ -124,3 +127,30 @@ class Browser:
         Browser.wait_for_page()
         Browser.wait_for(driver, locator)
         Browser.find(driver, locator).send_keys(input_string)
+
+    @staticmethod
+    def get_text(driver: WebDriver, locator) -> str:
+        Browser.wait_for_page()
+        Browser.wait_for(driver, locator)
+        found = Browser.find(driver, locator)
+        if isinstance(found, WebElement):
+            return found.text
+        elif isinstance(found, list):
+            while True:
+                print("\n> Found multiple values for 'TME product name'. Select from below:")
+                for index, element in enumerate(found):
+                    print(f"{index + 1} - {element.text}")
+                user_selection = input()
+                if user_selection in ["1", "2", "3", "4", "5", "6", "7", "8", "9"]:
+                    user_number = int(user_selection)
+                    if user_number <= len(found):
+                        break
+                print("Invalid input.")
+            return found[int(user_selection) - 1]
+
+    @staticmethod
+    def search_for_component(driver: WebDriver, component_name: str):
+        driver.get("https://www.tme.eu/pl/")
+        Browser.wait_and_click(driver, TME.cookie_agree(), ignore_exception=True)
+        Browser.wait_and_input(driver, TME.search_bar(), component_name)
+        Browser.wait_and_click(driver, TME.search_submit_button())
