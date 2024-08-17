@@ -12,15 +12,14 @@ workdir = os.getcwd()
 components = []
 purchase_list = []
 not_found_list = []
-file_path = None  # C:/Users/Grzesiek/Desktop/BOM_Buck-25W-V3-24VCharger_2024-08-07.csv
+file_path = None  # C:/Users/Grzesiek/Desktop/BOM_Buck-25W-V3-24VCharger_2024-08-17.csv
 is_path_incorrect = True
 user_input = None
 
 BASIC_TYPES = [
     ComponentType.CAPACITOR,
     ComponentType.RESISTOR,
-    ComponentType.INDUCTOR,
-    ComponentType.CONNECTOR
+    ComponentType.INDUCTOR
 ]
 
 print("\n\n===== Welcome to AutoBOM! =====")
