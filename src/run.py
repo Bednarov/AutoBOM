@@ -1,117 +1,122 @@
-import os
-import csv
-import json
 import sys
-
-from selenium import webdriver
-
+import os
+import json
+import csv
 from prototypes import Component, ComponentType, ColumnName
-from TME_website import TME, Browser
+from TME import API
 
 # global variables
-skip_to_browser = False
-
+workdir = os.getcwd()
 components = []
 purchase_list = []
 file_path = None  # C:\Users\Grzesiek\Desktop\BOM_Buck-25W-V3-24VCharger_2024-08-07.csv
 is_path_incorrect = True
-user_input = [None, None]
+user_input = None
 abort_program = False
 
-
-def page_has_loaded(web_driver: webdriver):
-    page_state = web_driver.execute_script('return document.readyState;')
-    return page_state == 'complete'
-
+BASIC_TYPES = [
+    ComponentType.CAPACITOR,
+    ComponentType.RESISTOR,
+    ComponentType.INDUCTOR,
+    ComponentType.CONNECTOR
+]
 
 print("\n\nWelcome to AutoBOM")
 
-if not skip_to_browser:
-    while is_path_incorrect:
-        print("\n> Please input full path to EasyEDA BOM CSV file:")
-        file_path = input().replace(os.sep, '/')
-        if os.path.exists(file_path):
-            is_path_incorrect = False
-            print("> Opening CSV file")
+while is_path_incorrect:
+    print("\n> Please input full path to EasyEDA BOM CSV file:")
+    file_path = input().replace(os.sep, '/')
+    if os.path.exists(file_path):
+        is_path_incorrect = False
+        print("> Opening CSV file")
+    else:
+        print("> Invalid path. Try again.")
+
+save_file_path = "/".join(file_path.split("/")[:-1])
+
+with open(file_path, newline='', encoding='utf-16') as csvfile:
+    reader = csv.reader(csvfile, delimiter='\t', quotechar='|')
+    for index, row in enumerate(reader):
+        if index == 0:
+            column_names_temp = []
+            for i, element in enumerate(row):
+                column_names_temp.append(element)
+            column_names = dict.fromkeys(column_names_temp)
         else:
-            print("> Invalid path. Try again.")
+            new_component_name = None
+            new_component_designators = None
+            new_component_footprint = None
+            new_component_quantity = None
+            new_component_typeof = None
 
-    with open(file_path, newline='', encoding='utf-16') as csvfile:
-        reader = csv.reader(csvfile, delimiter='\t', quotechar='|')
-        for index, row in enumerate(reader):
-            if index == 0:
-                column_names_temp = []
-                for i, element in enumerate(row):
-                    column_names_temp.append(element)
-                column_names = dict.fromkeys(column_names_temp)
-            else:
-                new_component_name = None
-                new_component_designators = None
-                new_component_footprint = None
-                new_component_quantity = None
-                new_component_typeof = None
+            for i, element in enumerate(row):
+                if list(ColumnName)[i].value == ColumnName.NAME.value:
+                    new_component_name = str(element.strip('"'))
+                elif list(ColumnName)[i].value == ColumnName.DESIGNATOR.value:
+                    new_component_designators = element.strip('"').split(",")
+                elif list(ColumnName)[i].value == ColumnName.FOOTPRINT.value:
+                    new_component_footprint = str(element.strip('"'))
+                elif list(ColumnName)[i].value == ColumnName.QUANTITY.value:
+                    new_component_quantity = int(element.strip('"'))
 
-                for i, element in enumerate(row):
-                    if list(ColumnName)[i].value == ColumnName.NAME.value:
-                        new_component_name = str(element)
-                    elif list(ColumnName)[i].value == ColumnName.DESIGNATOR.value:
-                        new_component_designators = element.strip('"').split(",")
-                    elif list(ColumnName)[i].value == ColumnName.FOOTPRINT.value:
-                        new_component_footprint = str(element)
-                    elif list(ColumnName)[i].value == ColumnName.QUANTITY.value:
-                        new_component_quantity = int(element.strip('"'))
+            # recognize type
+            designator_letter = new_component_designators[0][0]
+            for i, typeof in enumerate(list(ComponentType)):
+                if designator_letter == typeof.value:
+                    new_component_typeof = typeof
+            components.append(Component(name=new_component_name, designators=new_component_designators,
+                                        footprint=new_component_footprint, quantity=new_component_quantity,
+                                        typeof=new_component_typeof))
 
-                # recognize type
-                designator_letter = new_component_designators[0][0]
-                for i, typeof in enumerate(list(ComponentType)):
-                    if designator_letter == typeof.value:
-                        new_component_typeof = typeof
-                components.append(Component(name=new_component_name, designators=new_component_designators,
-                                            footprint=new_component_footprint, quantity=new_component_quantity,
-                                            typeof=new_component_typeof))
+print("\n> Parsed components:")
+for index, component in enumerate(components):
+    component.printout(index + 1)
 
-    print("\n> Parsed components:")
+print("\n> Please verify the above list. Is it correct? [y/n]:")
+user_input = input()
+
+if user_input in ["y", "Y"]:
+    print("\n> Proceeding with API activity")
+
+    auth = ["None", "None"]
+    print(f"Reading authentication file...")
+    if os.path.exists(os.path.join(save_file_path, "authentication.json")):
+        with open(os.path.join(save_file_path, "authentication.json"), 'r') as f:
+            config_data = json.load(f)
+        auth[0] = config_data["API_KEY"]
+        auth[1] = config_data["SECRET"]
+    else:
+        print("> Authentication file not found.")
+        print("> Provide TME API Key:")
+        auth[0] = input()
+        print("> Provide TME Secret:")
+        auth[1] = input()
+
     for index, component in enumerate(components):
-        component.printout(index + 1)
-
-    print("\n> Please verify the above list. Is it correct? [y/n]:")
-    user_control = input()
-else:
-    user_control = "Y"
-
-if user_control in ["y", "Y"]:
-    print("\n> Proceeding with web browser activity")
-
-    # browser setup
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("--disable-search-engine-choice-screen")
-    # chrome_options.add_argument("--start-maximized")
-    browser = webdriver.Chrome(options=chrome_options)
-
-    search_string_first = "https://www.tme.eu/pl/katalog/?queryPhrase="
-    search_string_last = "&productListOrderDir=DESC&onlyInStock=1"
-    for index, component in enumerate(components):
-        component.printout()
-        print("> Press any key to search for this component. Press [s] to skip, press [e] to abort:")
-        user_control = input()
-        if user_control in ["s", "S"]:
+        if component.typeof in BASIC_TYPES:
             continue
-        if user_control in ["e", "E"]:
+        component.printout(index + 1)
+        print(f"> Press any key to search for this component. "
+              f"Press [s] to skip, press [e] to abort:")
+        user_input = input()
+        if user_input in ["s", "S"]:
+            continue
+        if user_input in ["e", "E"]:
             abort_program = True
             break
         print("> Searching for component...")
-        skip_component = False
-        search_string = search_string_first + component.name + search_string_last
-        Browser.search_for_component(browser, component.name)
 
-        while True:
-            print("> Select proper component in browser and press any key:")
+        # search for in api
+        API.search_for_product(component.name, auth)
+
+        while True:  # TODO: Handle selecting when multiple found or when nothing found
+            print("> Select proper component:") # TODO: FIX
             _ = input()
-            tme_product_text = Browser.get_text(browser, TME.product_symbol())
+            tme_product_text = "None"  # TODO: Get proper text
             print(f"Assigned {tme_product_text} to {component.name}")
             print("> Is this correct? [y/n]")
-            user_control = input()
-            if user_control in ["y", "Y"]:
+            user_input = input()
+            if user_input in ["y", "Y"]:
                 break
             print("> Aborted.")
         purchase_list.append(f"{tme_product_text} {component.quantity}")
@@ -126,10 +131,8 @@ if user_control in ["y", "Y"]:
     file_content = {
         "Components list": purchase_list
     }
-    save_file_path = "/".join(file_path.split("/")[:-1])
     if os.path.exists(os.path.join(save_file_path, "components.json")):
         os.remove(f"{save_file_path}/components.json")
-    # with open('default_config.json', 'w') as f:
     with open(os.path.join(save_file_path, "components.json"), "w") as f:
         json.dump(file_content, f, indent=4)
     print(f"> Purchase list saved to {os.path.join(save_file_path, "components.json")}")
