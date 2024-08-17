@@ -112,15 +112,17 @@ all_symbols_list = API.get_all_symbols(auth)
 sleep(2)
 
 for index, component in enumerate(components):
-    os.system("cls")
     component.printout(index + 1)
-    print("> Press [enter] to continue, or [s] to skip:")
+    print("> Press [enter] to continue, or [s] to skip, [e] to abort:")
     user_input = input()
     if user_input in ["s", "S"]:
         print("Skipping...")
         sleep(1)
         not_found_list.append(component.name)
         continue
+    if user_input in ["e", "E"]:
+        print("> Aborting program.")
+        sys.exit()
 
     if component.typeof in BASIC_TYPES:
         search_category = Categories[component.typeof.value]
@@ -270,8 +272,7 @@ for index, component in enumerate(components):
             purchase_list.append(f"{tme_product_text} {to_purchase}")
             continue
 
-os.system("cls")
-print("> Saving product list...")
+print("\n> Saving product list...")
 
 # saving the file lists
 if os.path.exists(os.path.join(save_file_path, "components.txt")):
