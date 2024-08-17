@@ -5,14 +5,14 @@ import csv
 from time import sleep
 
 from prototypes import Component, ComponentType, ColumnName
-from TME import API
+from TME import API, Categories
 
 # global variables
 workdir = os.getcwd()
 components = []
 purchase_list = []
 not_found_list = []
-file_path = None  # C:\Users\Grzesiek\Desktop\BOM_Buck-25W-V3-24VCharger_2024-08-07.csv
+file_path = None  # C:/Users/Grzesiek/Desktop/BOM_Buck-25W-V3-24VCharger_2024-08-07.csv
 is_path_incorrect = True
 user_input = None
 
@@ -23,7 +23,7 @@ BASIC_TYPES = [
     ComponentType.CONNECTOR
 ]
 
-print("\n\nWelcome to AutoBOM")
+print("\n\n===== Welcome to AutoBOM! =====")
 
 while is_path_incorrect:
     print("\n> Please input full path to EasyEDA BOM CSV file:")
@@ -79,12 +79,22 @@ with open(file_path, newline='', encoding='utf-16') as csvfile:
                                         typeof=new_component_typeof))
 
 print(f"\nParsed {len(components)} different components.")
-for component in components:
-    component.printout()
 sleep(1)
 
+while True:
+    print("\n> Please input how many copies of the project is needed:")
+    user_input = input()
+    if user_input.isnumeric() and int(user_input) > 0:
+        copies_amount = int(user_input)
+        break
+    else:
+        print("Invalid input.")
+
+for component in components:
+    component.quantity *= copies_amount
+
 auth = ["None", "None"]
-print(f"\n> Reading authentication file...")
+print(f"\n> Reading API authentication file...")
 if os.path.exists(os.path.join(save_file_path, "authentication.json")):
     with open(os.path.join(save_file_path, "authentication.json"), 'r') as f:
         config_data = json.load(f)
@@ -102,27 +112,86 @@ print("\n> Proceeding with API activity")
 all_symbols_list = API.get_all_symbols(auth)
 sleep(1)
 
-# 1. Search in all symbols
-# if matches multiple - select
-# if not found try normal search
-# if matches found - select
-# if not found - skip
-
-
 for index, component in enumerate(components):
-    if component.typeof in BASIC_TYPES:
-        continue  # TODO: handle searching for passive components (get categories -> get category id from name search -> search in category id by param
-
     component.printout(index + 1)
-    print("> Searching for product...")
+
+    if component.typeof in BASIC_TYPES:
+        search_category = Categories[component.typeof.value]
+        if component.typeof is ComponentType.CAPACITOR and component.name[-1] != "F":
+            new_name = component.name + "F"
+        elif component.typeof is ComponentType.INDUCTOR and component.name[-1] != "H":
+            new_name = component.name + "H"
+        else:
+            new_name = component.name
+        new_footprint = component.footprint[1:]
+
+        search_result_dicts = API.search(new_name + " " + new_footprint, auth, search_category)
+
+        if not search_result_dicts:
+            print(f"No product named '{new_name + " " + new_footprint}' was found. Searching again...")
+            search_result_dicts = API.search_page(new_name, auth, search_category)
+            if not search_result_dicts:
+                print(f"No product named '{new_name}' was found.")
+                sleep(1)
+                not_found_list.append(component.name)
+                continue
+
+        print(f"Found {len(search_result_dicts)} matching products.")
+        print(f"Checking stocks and prices... 1/{len(search_result_dicts)}", end="")
+        list_of_texts = []
+        for i, product in enumerate(search_result_dicts):
+            print("\r", end="")
+            print(f"Checking stocks and prices... {i + 1}/{len(search_result_dicts)}", end="")
+            product_stock, product_price = API.get_product_price_and_stock(product['TME_Name'], auth, component.quantity)
+            to_buy = component.quantity if component.quantity > product["MinAmount"] else product["MinAmount"]
+            list_of_texts.append(f"{i + 1}. {product['TME_Name']}: '{product['Description']}' by {product['Producer']} "
+                                 f"=== needed: {component.quantity}, minAmount: {product['MinAmount']}, price: "
+                                 f"{product_price:.2f} PLN, total: {product_price * to_buy:.2f} PLN === "
+                                 f"stock: {product_stock}")
+        print("\nSelect product:")
+        for text in list_of_texts:
+            print(text)
+
+        print(f"> Select product to use as '{component.name}' component, type selected number or type [s] to skip, "
+              f"[e] to abort:")
+        user_input = input()
+        if user_input in ["e", "E"]:
+            print("> Aborting program.")
+            sys.exit()
+        if user_input in ["s", "S"]:
+            print(f"Component '{component.name}' selection aborted.")
+            not_found_list.append(component.name)
+            continue
+        if user_input.isnumeric():
+            if int(user_input) < 1 or int(user_input) > len(search_result_dicts):
+                print("Invalid selection. Skipping...")
+                sleep(1)
+                not_found_list.append(component.name)
+                continue
+            found_product = search_result_dicts[int(user_input) - 1]
+            tme_product_text = found_product["TME_Name"]
+            tme_min_amount = found_product["MinAmount"]
+            if tme_min_amount > component.quantity:
+                to_purchase = tme_min_amount
+            else:
+                to_purchase = component.quantity
+            print(f"> Assigned '{tme_product_text}' to '{component.name}'.")
+            sleep(1)
+            purchase_list.append(f"{tme_product_text} {to_purchase}")
+            continue
+
+    print("> Searching for product in all symbols...")
     search_result = list(filter(lambda x: component.name in x, all_symbols_list))
 
     if not search_result:
-        print(f"No product with symbol '{component.name}' was found.")
-        sleep(1)
-        # TODO: If not in stock or not fount try to research by just a beginning of name
-        not_found_list.append(component.name)
-        continue
+        print(f"No product with symbol '{component.name}' was found. Searching again...")
+        search_result_dicts = API.search_page(component.name, auth)
+        search_result = [x["TME_Name"] for x in search_result_dicts]
+        if not search_result:
+            print(f"No product named '{component.name}' was found.")
+            sleep(1)
+            not_found_list.append(component.name)
+            continue
 
     if len(search_result) == 1:
         print("Found 1 matching product.")
@@ -147,20 +216,22 @@ for index, component in enumerate(components):
 
     elif len(search_result) > 1:
         print(f"Found {len(search_result)} matching products.")
-        print("> Checking stocks...")
-        deleted_amount = 0
+
+        print(f"Checking stocks and prices... 1/{len(search_result_dicts)}", end="")
+        list_of_texts = []
         for i, product in enumerate(search_result):
-            product_stock = API.get_product_stock(product, auth)
-            if product_stock < component.quantity:
-                search_result.remove(product)
-                deleted_amount += 1
-        if deleted_amount > 0:
-            print(f"{deleted_amount} products from list are not in stock.")
-        print("Select product:")
-        for i, product in enumerate(search_result):
+            print("\r", end="")
+            print(f"Checking stocks and prices... {i + 1}/{len(search_result_dicts)}", end="")
+            product_stock, product_price = API.get_product_price_and_stock(product, auth, component.quantity)
             found_product = API.get_specific_product_info(product, auth)
-            print(f"{i + 1}. {product}: {found_product['Description']} by {found_product['Producer']}")
-            # TODO: Print product description and footprint
+            to_buy = component.quantity if component.quantity > found_product["MinAmount"] else found_product["MinAmount"]
+            list_of_texts.append(f"{i + 1}. {found_product['TME_Name']}: '{found_product['Description']}' by "
+                                 f"{found_product['Producer']} === needed: {component.quantity}, minAmount: "
+                                 f"{found_product['MinAmount']}, price: {product_price:.2f} PLN, total: "
+                                 f"{product_price * to_buy:.2f} PLN === stock: {product_stock}")
+        print("\nSelect product:")
+        for text in list_of_texts:
+            print(text)
 
         print(f"> Select product to use as '{component.name}' component, type selected number or type [s] to skip, "
               f"[e] to abort:")
@@ -193,7 +264,6 @@ for index, component in enumerate(components):
 
 print("\n> Press [enter] to continue:")
 _ = input()
-
 
 # saving the file lists
 if os.path.exists(os.path.join(save_file_path, "components.txt")):
