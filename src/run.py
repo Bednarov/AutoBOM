@@ -109,9 +109,9 @@ else:
 
 print("\n> Proceeding with API activity")
 all_symbols_list = API.get_all_symbols(auth)
-sleep(2)
+sleep(1)
 
-for index, component in enumerate(components):
+for index, component in enumerate(components):  # TODO: Get spaghetti code into functions. Put a while loop to add additional search terms, to display next / previous page etc
     component.printout(index + 1)
     print("> Press [enter] to continue, or [s] to skip, [e] to abort:")
     user_input = input()
@@ -193,6 +193,7 @@ for index, component in enumerate(components):
     print("> Searching for product in all symbols...")
     search_result = list(filter(lambda x: component.name in x, all_symbols_list))
 
+    found_new = False
     if not search_result:
         print(f"No product with symbol '{component.name}' was found. Searching again...")
         search_result_dicts = API.search_page(component.name, auth)
@@ -202,11 +203,16 @@ for index, component in enumerate(components):
             sleep(1)
             not_found_list.append(component.name)
             continue
+        found_new = True
 
     if len(search_result) == 1:
         print("Found 1 matching product.")
-        found_product = API.get_specific_product_info(component.name, auth)
-        product_stock = API.get_product_stock(component.name, auth)
+        if found_new:
+            found_product = API.get_specific_product_info(search_result[0], auth)
+            product_stock = API.get_product_stock(search_result[0], auth)
+        else:
+            found_product = API.get_specific_product_info(component.name, auth)
+            product_stock = API.get_product_stock(component.name, auth)
         if product_stock < component.quantity:
             print(f"Product '{component.name}' not in stock. In stock: {product_stock}, needed: {component.quantity}")
             sleep(1)
@@ -227,14 +233,18 @@ for index, component in enumerate(components):
     elif len(search_result) > 1:
         print(f"Found {len(search_result)} matching products.")
 
-        print(f"Checking stocks and prices... 1/{len(search_result_dicts)}", end="")
+        amount_to_check = len(search_result)
+        print(f"Checking stocks and prices... 1/{amount_to_check}", end="")
         list_of_texts = []
-        for i, product in enumerate(search_result):
+        for i, product in enumerate(search_result):  # TODO: Different stock check method than in upper part
             print("\r", end="")
-            print(f"Checking stocks and prices... {i + 1}/{len(search_result_dicts)}", end="")
+            print(f"Checking stocks and prices... {i + 1}/{amount_to_check}", end="")
             product_stock, product_price = API.get_product_price_and_stock(product, auth, component.quantity)
             found_product = API.get_specific_product_info(product, auth)
             to_buy = component.quantity if component.quantity > found_product["MinAmount"] else found_product["MinAmount"]
+            if product_stock < to_buy:
+                search_result.remove(product)
+                continue
             list_of_texts.append(f"{i + 1}. {found_product['TME_Name']}: '{found_product['Description']}' by "
                                  f"{found_product['Producer']} === needed: {component.quantity}, minAmount: "
                                  f"{found_product['MinAmount']}, price: {product_price:.2f} PLN, total: "
