@@ -125,6 +125,7 @@ for index, component in enumerate(components):
             new_name = component.name
         new_footprint = component.footprint[1:]
 
+        print("> Searching for product...")
         search_result_dicts = API.search_page(new_name + " " + new_footprint, auth, search_category)
 
         if not search_result_dicts:
