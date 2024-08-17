@@ -93,23 +93,38 @@ print("\n> Proceeding with API activity")
 all_symbols_list = API.get_all_symbols(auth)
 sleep(1)
 
+# 1. Search in all symbols
+# if matches multiple - select
+# if not found try normal search
+# if matches found - select
+# if not found - skip
+
+
 for index, component in enumerate(components):
     if component.typeof in BASIC_TYPES:
         continue  # TODO: handle searching for passive components (get categories -> get category id from name search -> search in category id by param
 
     component.printout(index + 1)
-    print("> Searching for component...")
+    print("> Searching for product...")
     search_result = list(filter(lambda x: component.name in x, all_symbols_list))
 
     if not search_result:
-        print(f"No product matching '{component.name}' was found.")
+        print(f"No product with symbol '{component.name}' was found.")
+        sleep(1)
         # TODO: If not in stock or not fount try to research by just a beginning of name
         not_found_list.append(component.name)
         continue
 
     if len(search_result) == 1:
-        print("Found 1 matching component.")
+        print("Found 1 matching product.")
         found_product = API.search_for_product(component.name, auth)
+        product_stock = API.get_product_stock(component.name, auth)
+        if product_stock < component.quantity:
+            print(f"Product '{component.name}' not in stock. In stock: {product_stock}, needed: {component.quantity}")
+            sleep(1)
+            # TODO: Try to search for simmilar ones and present to user
+            not_found_list.append(component.name)
+            continue
         tme_product_text = found_product["TME_Name"]
         tme_min_amount = found_product["MinAmount"]
         if tme_min_amount > component.quantity:
@@ -117,14 +132,27 @@ for index, component in enumerate(components):
         else:
             to_purchase = component.quantity
         print(f"> Assigned '{tme_product_text}' to '{component.name}'.")
+        sleep(1)
         purchase_list.append(f"{tme_product_text} {to_purchase}")
         continue
 
     elif len(search_result) > 1:
-        print(f"Found {len(search_result)} matching components:")
+        print(f"Found {len(search_result)} matching products.")
+        print("Checking stocks...")
+        deleted_amount = 0
+        for i, product in enumerate(search_result):
+            product_stock = API.get_product_stock(product, auth)
+            if product_stock < component.quantity:
+                search_result.remove(product)
+                deleted_amount += 1
+        if deleted_amount > 0:
+            print(f"{deleted_amount} products from list are not in stock.")
+        print("Select product:")
         for i, product in enumerate(search_result):
             print(f"{i + 1}. {product}")
-        print(f"> Select component to use as '{component.name}' [1/2/3 etc] or press [s] to skip, [e] to abort:")
+            # TODO: Print product description and footprint
+
+        print(f"> Select product to use as '{component.name}' component, typing [1/2/3 etc] or press [s] to skip, [e] to abort:")
         user_input = input()
         if user_input in ["e", "E"]:
             print("> Aborting program.")
