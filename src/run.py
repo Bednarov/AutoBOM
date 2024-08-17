@@ -62,17 +62,26 @@ with open(file_path, newline='', encoding='utf-16') as csvfile:
                     new_component_quantity = int(element.strip('"'))
 
             # recognize type
-            designator_letter = new_component_designators[0][0]
+            designator_str = ""
+            for char in new_component_designators[0]:
+                if not char.isnumeric():
+                    designator_str += char
+                else:
+                    break
             for i, typeof in enumerate(list(ComponentType)):
-                if designator_letter == typeof.value:
+                if isinstance(typeof.value, list):
+                    if designator_str in typeof.value:
+                        new_component_typeof = typeof
+                elif designator_str == typeof.value:
                     new_component_typeof = typeof
             components.append(Component(name=new_component_name, designators=new_component_designators,
                                         footprint=new_component_footprint, quantity=new_component_quantity,
                                         typeof=new_component_typeof))
 
 print(f"\nParsed {len(components)} different components.")
-print("> Press any key to continue:")
-_ = input()
+for component in components:
+    component.printout()
+sleep(1)
 
 auth = ["None", "None"]
 print(f"\n> Reading authentication file...")
@@ -117,7 +126,7 @@ for index, component in enumerate(components):
 
     if len(search_result) == 1:
         print("Found 1 matching product.")
-        found_product = API.search_for_product(component.name, auth)
+        found_product = API.get_specific_product_info(component.name, auth)
         product_stock = API.get_product_stock(component.name, auth)
         if product_stock < component.quantity:
             print(f"Product '{component.name}' not in stock. In stock: {product_stock}, needed: {component.quantity}")
@@ -138,7 +147,7 @@ for index, component in enumerate(components):
 
     elif len(search_result) > 1:
         print(f"Found {len(search_result)} matching products.")
-        print("Checking stocks...")
+        print("> Checking stocks...")
         deleted_amount = 0
         for i, product in enumerate(search_result):
             product_stock = API.get_product_stock(product, auth)
@@ -149,10 +158,12 @@ for index, component in enumerate(components):
             print(f"{deleted_amount} products from list are not in stock.")
         print("Select product:")
         for i, product in enumerate(search_result):
-            print(f"{i + 1}. {product}")
+            found_product = API.get_specific_product_info(product, auth)
+            print(f"{i + 1}. {product}: {found_product['Description']} by {found_product['Producer']}")
             # TODO: Print product description and footprint
 
-        print(f"> Select product to use as '{component.name}' component, typing [1/2/3 etc] or press [s] to skip, [e] to abort:")
+        print(f"> Select product to use as '{component.name}' component, type selected number or type [s] to skip, "
+              f"[e] to abort:")
         user_input = input()
         if user_input in ["e", "E"]:
             print("> Aborting program.")
@@ -164,10 +175,11 @@ for index, component in enumerate(components):
         if user_input.isnumeric():
             if int(user_input) < 1 or int(user_input) > len(search_result):
                 print("Invalid selection. Skipping...")
+                sleep(1)
                 not_found_list.append(component.name)
                 continue
             selected_name = search_result[int(user_input) - 1]
-            found_product = API.search_for_product(selected_name, auth)
+            found_product = API.get_specific_product_info(selected_name, auth)
             tme_product_text = found_product["TME_Name"]
             tme_min_amount = found_product["MinAmount"]
             if tme_min_amount > component.quantity:
@@ -179,7 +191,7 @@ for index, component in enumerate(components):
             purchase_list.append(f"{tme_product_text} {to_purchase}")
             continue
 
-print("\n> Press any key to continue:")
+print("\n> Press [enter] to continue:")
 _ = input()
 
 

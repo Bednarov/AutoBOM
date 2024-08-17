@@ -8,8 +8,41 @@ from api import Client
 
 class API:
     @staticmethod
-    def search_for_product(product_name: str, auth: list) -> dict:
+    def search(product_name: str, auth: list, category_id: int, ) -> dict:
         print(f"Searching for '{product_name}'...")
+        sleep(0.1)
+        token = auth[0]
+        secret = auth[1]
+
+        client = Client(token, secret)
+        parameters = {
+            'SymbolList[0]': product_name,
+            'Country': 'PL',
+            'Language': 'en',
+        }
+
+        try:
+            response = urllib.request.urlopen(client.request('/Products/GetProducts', parameters))
+            response_str = response.read().decode('utf-8')
+            response_json = json.loads(response_str)
+
+            product = response_json["Data"]["ProductList"][0]
+            product_dict = {
+                "TME_Name": product["Symbol"],
+                "Producer": product["Producer"],
+                "Description": product["Description"],
+                "MinAmount": int(product["MinAmount"])
+            }
+            return product_dict
+
+        except urllib.error.URLError as e:
+            print(e.reason)
+            return {"Error": "API error."}
+
+    @staticmethod
+    def get_specific_product_info(product_name: str, auth: list, dont_print: bool = True) -> dict:
+        if not dont_print:
+            print(f"Searching for '{product_name}'...")
         sleep(0.1)
         token = auth[0]
         secret = auth[1]

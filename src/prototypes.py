@@ -22,7 +22,7 @@ class ComponentType(Enum):
     DIODE = "D"
     INTEGRATED_CIRCUIT = "U"
     FUSE = "F"
-    CONNECTOR = "J"
+    CONNECTOR = ["J", "CON"]
 
 
 class Component:
