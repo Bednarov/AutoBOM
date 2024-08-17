@@ -113,6 +113,13 @@ sleep(1)
 
 for index, component in enumerate(components):
     component.printout(index + 1)
+    print("> Press [enter] to continue, or [s] to skip:")
+    user_input = input()
+    if user_input in ["s", "S"]:
+        print("Skipping...")
+        sleep(1)
+        not_found_list.append(component.name)
+        continue
 
     if component.typeof in BASIC_TYPES:
         search_category = Categories[component.typeof.value]
