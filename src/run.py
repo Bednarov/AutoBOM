@@ -109,9 +109,10 @@ else:
 
 print("\n> Proceeding with API activity")
 all_symbols_list = API.get_all_symbols(auth)
-sleep(1)
+sleep(2)
 
 for index, component in enumerate(components):
+    os.system("cls")
     component.printout(index + 1)
     print("> Press [enter] to continue, or [s] to skip:")
     user_input = input()
@@ -269,8 +270,8 @@ for index, component in enumerate(components):
             purchase_list.append(f"{tme_product_text} {to_purchase}")
             continue
 
-print("\n> Press [enter] to continue:")
-_ = input()
+os.system("cls")
+print("> Saving product list...")
 
 # saving the file lists
 if os.path.exists(os.path.join(save_file_path, "components.txt")):
