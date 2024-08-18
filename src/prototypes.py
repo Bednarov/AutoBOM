@@ -40,3 +40,18 @@ class Component:
         else:
             print(f"\nType: {self.typeof.name}, Name: {self.name}, Footprint: {self.footprint}, Quantity: "
                   f"{self.quantity}, Designators: {self.designators}")
+
+
+class Product:
+    def __init__(self, symbol: str, description: str, producer: str, min_amount: int, stock: int, price: float):
+        self.symbol = symbol
+        self.description = description
+        self.producer = producer
+        self.min_amount = min_amount
+        self.stock = stock
+        self.price = price
+
+    def printout(self, prefix: str, needed: int, to_buy: int):
+        print(f"{prefix} - {self.symbol}: '{self.description}' by {self.producer} === needed: {needed}, minAmount: "
+              f"{self.min_amount}, price: {self.price:.2f} PLN, total: {self.price * to_buy:.2f} PLN === stock: "
+              f"{self.stock}")

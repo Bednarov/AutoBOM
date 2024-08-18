@@ -17,24 +17,7 @@ Categories = {
 
 class API:
     @staticmethod
-    def search(product_name: str, auth: list, category: str = None) -> list:
-        if category:
-            print(f"> Searching for '{product_name}' in '{category}'...")
-        else:
-            print(f"> Searching for '{product_name}'...")
-        all_products_list = []
-        page_iterator = 1
-        while True:
-            products_on_page = API.search_page(product_name, auth, category, page_iterator)
-            if not products_on_page:
-                break
-            all_products_list += products_on_page
-            page_iterator += 1
-
-        return all_products_list
-
-    @staticmethod
-    def search_page(product_name: str, auth: list, category: str = None, page: int = None) -> list:
+    def search_page(product_name: str, auth: list, category: str = None, page: int = None) -> dict:
         sleep(0.1)
         token = auth[0]
         secret = auth[1]
@@ -59,19 +42,56 @@ class API:
             response_str = response.read().decode('utf-8')
             response_json = json.loads(response_str)
             products_list = response_json["Data"]["ProductList"]
-            found_list = []
-            for product in products_list:
-                product_dict = {
-                    "TME_Name": product["Symbol"],
-                    "Producer": product["Producer"],
-                    "Description": product["Description"],
-                    "MinAmount": int(product["MinAmount"])
-                }
-                found_list.append(product_dict)
-            return found_list
+            products_found = int(response_json["Data"]["Amount"])
+            return {
+                "HowManyFound": products_found,
+                "ProductList": products_list,
+                "APIError": None
+            }
 
         except urllib.error.URLError as e:
-            print(e.reason)
+            print(f"API error!: '{e.reason}'")
+            return {
+                "HowManyFound": -1,
+                "ProductList": [],
+                "APIError": e.reason
+            }
+
+    @staticmethod
+    def get_product_price_and_stock_multiple(symbol_list: list, auth: list) -> list:  # TODO: Handle not being able to request for more than 10 at a time
+        sleep(0.5)
+        print(f"Getting prices and stocks...")
+        token = auth[0]
+        secret = auth[1]
+
+        client = Client(token, secret)
+        parameters = {
+            'Country': 'PL',
+            'Language': 'en',
+            'Currency': 'PLN',
+        }
+        for index, symbol in enumerate(symbol_list):
+            if index > 9:
+                break
+            parameters.update({f"SymbolList[{index}]": f"{symbol}"})
+
+        try:
+            response = urllib.request.urlopen(client.request('/Products/GetPricesAndStocks', parameters))
+            response_str = response.read().decode('utf-8')
+            response_json = json.loads(response_str)
+
+            product_list = response_json["Data"]["ProductList"]
+            symbol_stock_price_list = []
+            for product in product_list:
+                symbol_stock_price_list.append({
+                    "Symbol": product["Symbol"],
+                    "Stock": int(product["Amount"]),
+                    "PriceList": product["PriceList"]
+                })
+            return symbol_stock_price_list
+
+        except urllib.error.URLError as e:
+            print(f"API error!: '{e.reason}'")
             return []
 
     @staticmethod
@@ -104,7 +124,7 @@ class API:
             return product_dict
 
         except urllib.error.URLError as e:
-            print(e.reason)
+            print(f"API error!: '{e.reason}'")
             return {"Error": "API error."}
 
     @staticmethod
@@ -134,7 +154,7 @@ class API:
             return stock_amount
 
         except urllib.error.URLError as e:
-            print(e.reason)
+            print(f"API error!: '{e.reason}'")
             return -1
 
     @staticmethod
@@ -177,7 +197,7 @@ class API:
             return stock_amount, price_per_needed
 
         except urllib.error.URLError as e:
-            print(e.reason)
+            print(f"API error!: '{e.reason}'")
             return -1, -1
 
     @staticmethod
@@ -199,8 +219,9 @@ class API:
 
             found_symbols_list = response_json["Data"]["SymbolList"]
             print(f"Got {len(found_symbols_list)} symbols from TME.")
+            sleep(1)
             return found_symbols_list
 
         except urllib.error.URLError as e:
-            print(e.reason)
+            print(f"API error!: '{e.reason}'")
             return []
