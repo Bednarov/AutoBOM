@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "autobom"
-version = "1.0.4"
+version = "1.0.5"
 description = ""
 authors = ["Bednar <gbed24@gmail.com>"]
 readme = "README.md"

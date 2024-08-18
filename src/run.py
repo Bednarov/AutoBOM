@@ -259,7 +259,6 @@ for index, component in enumerate(components):
                         new_footprint = component.footprint
                     if user_phrase:
                         new_footprint += f" {user_phrase}"
-                        user_phrase = ""
                     search_results = Methods.search_for_smd(new_name, new_footprint, component.quantity, auth,
                                                             search_category, search_page)
                 elif search_type is SearchType.SMD_WIDE:
@@ -267,13 +266,11 @@ for index, component in enumerate(components):
                     new_name = Methods.adjust_component_name(component)
                     if user_phrase:
                         new_name += f" {user_phrase}"
-                        user_phrase = ""
                     search_results = Methods.search_for_product(new_name, component.quantity, auth, search_category,
                                                                 search_page)
                 elif search_type is SearchType.NORMAL:
                     if user_phrase:
                         new_name = f"{component.name} {user_phrase}"
-                        user_phrase = ""
                     else:
                         new_name = component.name
                     search_results = Methods.search_for_product(new_name, component.quantity, auth,
