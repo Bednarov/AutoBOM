@@ -1,6 +1,15 @@
 from enum import Enum
 
 
+Categories = {
+    "R": "Resistors",
+    "L": "Inductors",
+    "C": "Capacitors",
+    "Q": "Transistors",
+    "D": "Diodes",
+}
+
+
 class ColumnName(Enum):
     ID = "ID"
     NAME = "Name"
@@ -23,6 +32,15 @@ class ComponentType(Enum):
     INTEGRATED_CIRCUIT = "U"
     FUSE = "F"
     CONNECTOR = ["J", "CON"]
+
+
+BASIC_TYPES = [
+    ComponentType.CAPACITOR,
+    ComponentType.RESISTOR,
+    ComponentType.INDUCTOR,
+    ComponentType.DIODE,
+    ComponentType.TRANSISTOR
+]
 
 
 class Component:

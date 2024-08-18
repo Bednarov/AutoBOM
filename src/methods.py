@@ -18,6 +18,7 @@ class UserActions(Enum):
     PAGE_UP = "Page up"
     PAGE_DOWN = "Page down"
     MANUAL_SEARCH = "Manual search"
+    SELECT = "Select"
 
 
 class SearchResults(Enum):
@@ -148,6 +149,40 @@ class Methods:
         return UserActions.SEARCH
 
     @staticmethod
+    def input_found_multiple_decide(how_many_found: int, how_many_on_screen: int) -> tuple:
+        while True:
+            if how_many_found > 20:
+                print("> Select product to use via [1/2/3...], [n] for next page, [p] for previous page, [m] for "
+                      "manual search, or [s] to skip, [e] to abort:")
+            else:
+                print("> Select product to use via [1/2/3...], [m] for manual search, or [s] to skip, [e] to abort:")
+            user_input = input()
+            if user_input in ["s", "S"]:
+                print("Skipping...")
+                sleep(1)
+                return UserActions.SKIP, 0
+            if user_input in ["e", "E"]:
+                print("Aborting program.")
+                sleep(1)
+                return UserActions.EXIT, 0
+            if user_input.isnumeric():
+                if 0 < int(user_input) <= how_many_on_screen:
+                    return UserActions.SELECT, int(user_input)
+            if user_input in ["n", "N"] and how_many_found > 20:
+                print("Going to next page.")
+                sleep(1)
+                return UserActions.PAGE_UP, 0
+            if user_input in ["p", "P"] and how_many_found > 20:
+                print("Going to previous page.")
+                sleep(1)
+                return UserActions.PAGE_DOWN, 0
+            if user_input in ["m", "M"]:
+                print("Manual search.")
+                sleep(1)
+                return UserActions.MANUAL_SEARCH, 0
+            print("Invalid input.\n")
+
+    @staticmethod
     def read_auth_file(save_file_path: str) -> list:
         auth = ["None", "None"]
         print(f"\n> Reading API authentication file...")
@@ -176,10 +211,10 @@ class Methods:
         return new_name
 
     @staticmethod
-    def is_footprint_smd(component: Component) -> bool:
-        if len(component.name) == 5:
-            if all(component.name[i].isnumeric() for i in range(1, len(component.name))):
-                if not component.name[0].isnumeric():
+    def is_footprint_smd(component_name: str) -> bool:
+        if len(component_name) == 5:
+            if component_name[1:].isnumeric():
+                if not component_name[0].isnumeric():
                     return True
         return False
 

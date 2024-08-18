@@ -1,9 +1,8 @@
 import sys
 import os
-from time import sleep
 
-from prototypes import Component, ComponentType, ColumnName
-from TME import API, Categories
+from prototypes import Categories, BASIC_TYPES
+from TME import API
 from methods import Methods, UserActions, SearchResults
 
 # C:/Users/Grzesiek/Desktop/BOM_Buck-25W-V3-24VCharger_2024-08-17.csv
@@ -13,19 +12,10 @@ workdir = os.getcwd()
 purchase_list = []
 not_found_list = []
 
-BASIC_TYPES = [
-    ComponentType.CAPACITOR,
-    ComponentType.RESISTOR,
-    ComponentType.INDUCTOR,
-    ComponentType.DIODE,
-    ComponentType.TRANSISTOR
-]
-
 print("\n\n===== Welcome to AutoBOM! =====")
 
-# TODO: DEBUG RESTORE
-# file_path = Methods.input_file_path()
-file_path = "C:/Users/Grzesiek/Desktop/BOM_Buck-25W-V3-24VCharger_2024-08-17.csv"
+# file_path = Methods.input_file_path()  # TODO: DEBUG RESTORE
+file_path = "C:/Users/Grzesiek/Desktop/BOM_Buck-25W-V3-24VCharger_2024-08-17.csv"  # TODO: DEBUG DELETE
 save_file_path = "/".join(file_path.split("/")[:-1])
 components = Methods.parse_csv(file_path)
 components = Methods.input_how_many_copies(components)
@@ -35,7 +25,7 @@ auth = Methods.read_auth_file(save_file_path)
 print("\n> Proceeding with API activity")
 all_symbols_list = API.get_all_symbols(auth)
 
-for index, component in enumerate(components):  # TODO: Get spaghetti code into functions. Put a while loop to add additional search terms, to display next / previous page etc
+for index, component in enumerate(components):
     user_input = None
     search_page = 1
     was_searched = False
@@ -51,20 +41,20 @@ for index, component in enumerate(components):  # TODO: Get spaghetti code into 
             if component.typeof in BASIC_TYPES:
                 search_category = Categories[component.typeof.value]
                 new_name = Methods.adjust_component_name(component)
-                if Methods.is_footprint_smd(component):
+                if Methods.is_footprint_smd(component.footprint):
                     new_footprint = component.footprint[1:]
                 else:
                     new_footprint = component.footprint
                 search_results = Methods.search_for_smd(new_name, new_footprint, component.quantity, auth,
                                                         search_category, search_page)
                 if search_results["Status"] is SearchResults.FOUND_NONE:
+                    was_searched = True
                     print(f"No product named '{new_name + " " + new_footprint}' was found. Searching again...")
                     search_results = Methods.search_for_product(new_name, component.quantity, auth, search_category,
                                                                 search_page)
                     if search_results["Status"] is SearchResults.FOUND_NONE:
                         user_input = Methods.input_not_found_decide(new_name)
                         if user_input is UserActions.MANUAL_SEARCH:
-                            was_searched = True
                             continue
                         if user_input is UserActions.EXIT:
                             sys.exit()
@@ -72,6 +62,7 @@ for index, component in enumerate(components):  # TODO: Get spaghetti code into 
                             not_found_list.append(component.name)
                             break
                     if search_results["Status"] is SearchResults.FOUND_ONE:
+                        was_searched = True
                         print("Found 1 matching product.")
                         p = search_results["Products"][0]
                         amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
@@ -79,12 +70,38 @@ for index, component in enumerate(components):  # TODO: Get spaghetti code into 
                         purchase_list.append(new_purchase)
                         break
                     if search_results["Status"] is SearchResults.FOUND_MULTIPLE:
+                        was_searched = True
                         print(f"Found {search_results['HowManyFound']} matching products.")
                         for i, p in enumerate(search_results["Products"]):
                             amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
-                            p.printout(f"{i}. '{component.name}'", component.quantity, amount)
+                            p.printout(f"{i + 1}. '{component.name}'", component.quantity, amount)
+                        user_input, user_selection = Methods.input_found_multiple_decide(
+                            search_results["HowManyFound"], len(search_results["Products"]))
+                        max_pages = int(search_results["HowManyFound"] / 20) + 1
+                        if user_input is UserActions.MANUAL_SEARCH:
+                            continue
+                        if user_input is UserActions.EXIT:
+                            sys.exit()
+                        if user_input is UserActions.SKIP:
+                            not_found_list.append(component.name)
+                            break
+                        if user_input is UserActions.PAGE_UP:
+                            search_page += 1
+                            search_page = max_pages if search_page > max_pages else search_page
+                            continue
+                        if user_input is UserActions.PAGE_DOWN:
+                            search_page -= 1
+                            search_page = 1 if search_page < 1 else search_page
+                            continue
+                        if user_input is UserActions.SELECT:
+                            p = search_results["Products"][user_selection - 1]
+                            amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
+                            new_purchase = Methods.assign_product(component.name, p.symbol, amount)
+                            purchase_list.append(new_purchase)
+                            break
 
                 if search_results["Status"] is SearchResults.FOUND_ONE:
+                    was_searched = True
                     print("Found 1 matching product.")
                     p = search_results["Products"][0]
                     amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
@@ -92,10 +109,37 @@ for index, component in enumerate(components):  # TODO: Get spaghetti code into 
                     purchase_list.append(new_purchase)
                     break
                 if search_results["Status"] is SearchResults.FOUND_MULTIPLE:
+                    was_searched = True
                     print(f"Found {search_results['HowManyFound']} matching products.")
                     for i, p in enumerate(search_results["Products"]):
                         amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
-                        p.printout(f"{i}. '{component.name}'", component.quantity, amount)
+                        p.printout(f"{i + 1}. '{component.name}'", component.quantity, amount)
+                    user_input, user_selection = Methods.input_found_multiple_decide(
+                        search_results["HowManyFound"], len(search_results["Products"]))
+                    max_pages = int(search_results["HowManyFound"] / 20) + 1
+                    if user_input is UserActions.MANUAL_SEARCH:
+                        continue
+                    if user_input is UserActions.EXIT:
+                        sys.exit()
+                    if user_input is UserActions.SKIP:
+                        not_found_list.append(component.name)
+                        break
+                    if user_input is UserActions.PAGE_UP:
+                        search_page += 1
+                        search_page = max_pages if search_page > max_pages else search_page
+                        continue
+                    if user_input is UserActions.PAGE_DOWN:
+                        search_page -= 1
+                        search_page = 1 if search_page < 1 else search_page
+                        continue
+                    if user_input is UserActions.SELECT:
+                        p = search_results["Products"][user_selection - 1]
+                        amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
+                        new_purchase = Methods.assign_product(component.name, p.symbol, amount)
+                        purchase_list.append(new_purchase)
+                        break
+
+            # ADD FOR NON_BASIC types
 
         else:
             if user_input is UserActions.MANUAL_SEARCH:
@@ -103,7 +147,6 @@ for index, component in enumerate(components):  # TODO: Get spaghetti code into 
                 if search_results["Status"] is SearchResults.FOUND_NONE:
                     user_input = Methods.input_not_found_decide(component.name)
                     if user_input is UserActions.MANUAL_SEARCH:
-                        was_searched = True
                         continue
                     if user_input is UserActions.EXIT:
                         sys.exit()
@@ -117,6 +160,37 @@ for index, component in enumerate(components):  # TODO: Get spaghetti code into 
                     new_purchase = Methods.assign_product(component.name, p.symbol, amount)
                     purchase_list.append(new_purchase)
                     break
+                if search_results["Status"] is SearchResults.FOUND_MULTIPLE:
+                    print(f"Found {search_results['HowManyFound']} matching products.")
+                    for i, p in enumerate(search_results["Products"]):
+                        amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
+                        p.printout(f"{i + 1}. '{component.name}'", component.quantity, amount)
+                    user_input, user_selection = Methods.input_found_multiple_decide(
+                        search_results["HowManyFound"], len(search_results["Products"]))
+                    max_pages = int(search_results["HowManyFound"] / 20) + 1
+                    if user_input is UserActions.MANUAL_SEARCH:
+                        continue
+                    if user_input is UserActions.EXIT:
+                        sys.exit()
+                    if user_input is UserActions.SKIP:
+                        not_found_list.append(component.name)
+                        break
+                    if user_input is UserActions.PAGE_UP:
+                        search_page += 1
+                        search_page = max_pages if search_page > max_pages else search_page
+                        continue
+                    if user_input is UserActions.PAGE_DOWN:
+                        search_page -= 1
+                        search_page = 1 if search_page < 1 else search_page
+                        continue
+                    if user_input is UserActions.SELECT:
+                        p = search_results["Products"][user_selection - 1]
+                        amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
+                        new_purchase = Methods.assign_product(component.name, p.symbol, amount)
+                        purchase_list.append(new_purchase)
+                        break
+
+            # TODO: ADD FOR PAGE CHANGE
 
     # OLD METHODS
     """print(f"> Searching for '{new_name + " " + new_footprint}'")
