@@ -70,6 +70,6 @@ class Product:
         self.price = price
 
     def printout(self, prefix: str, needed: int, to_buy: int):
-        print(f"{prefix} - {self.symbol}: '{self.description}' by {self.producer} === needed: {needed}, minAmount: "
+        print(f"{prefix} '{self.symbol}': '{self.description}' by {self.producer} === needed: {needed}, minAmount: "
               f"{self.min_amount}, price: {self.price:.2f} PLN, total: {self.price * to_buy:.2f} PLN === stock: "
               f"{self.stock}")

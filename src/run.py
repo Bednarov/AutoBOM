@@ -54,6 +54,10 @@ for index, component in enumerate(components):
                     search_results = Methods.search_for_product(new_name, component.quantity, auth, search_category,
                                                                 search_page)
                     if search_results["Status"] is SearchResults.FOUND_NONE:
+                        print(f"No product named '{new_name}' was found. Searching again...")
+                        search_type = SearchType.NORMAL
+                        search_results = Methods.search_for_product(component.name, component.quantity, auth)
+                    if search_results["Status"] is SearchResults.FOUND_NONE:
                         user_input, user_phrase = Methods.input_not_found_decide(new_name)
                         if user_input is UserActions.MANUAL_SEARCH:
                             continue
@@ -77,7 +81,7 @@ for index, component in enumerate(components):
                         print(f"Found {search_results['HowManyFound']} matching products.")
                         for i, p in enumerate(search_results["Products"]):
                             amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
-                            p.printout(f"{i + 1}. '{component.name}'", component.quantity, amount)
+                            p.printout(f"{i + 1}.", component.quantity, amount)
                         user_input, user_selection = Methods.input_found_multiple_decide(
                             search_results["HowManyFound"], len(search_results["Products"]))
                         max_pages = int(search_results["HowManyFound"] / 20) + 1
@@ -116,7 +120,7 @@ for index, component in enumerate(components):
                     print(f"Found {search_results['HowManyFound']} matching products.")
                     for i, p in enumerate(search_results["Products"]):
                         amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
-                        p.printout(f"{i + 1}. '{component.name}'", component.quantity, amount)
+                        p.printout(f"{i + 1}.", component.quantity, amount)
                     user_input, user_selection = Methods.input_found_multiple_decide(
                         search_results["HowManyFound"], len(search_results["Products"]))
                     max_pages = int(search_results["HowManyFound"] / 20) + 1
@@ -166,7 +170,7 @@ for index, component in enumerate(components):
                     print(f"Found {search_results['HowManyFound']} matching products.")
                     for i, p in enumerate(search_results["Products"]):
                         amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
-                        p.printout(f"{i + 1}. '{component.name}'", component.quantity, amount)
+                        p.printout(f"{i + 1}.", component.quantity, amount)
                     user_input, user_selection = Methods.input_found_multiple_decide(
                         search_results["HowManyFound"], len(search_results["Products"]))
                     max_pages = int(search_results["HowManyFound"] / 20) + 1
@@ -220,7 +224,7 @@ for index, component in enumerate(components):
                     print(f"Found {search_results['HowManyFound']} matching products.")
                     for i, p in enumerate(search_results["Products"]):
                         amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
-                        p.printout(f"{i + 1}. '{component.name}'", component.quantity, amount)
+                        p.printout(f"{i + 1}.", component.quantity, amount)
                     user_input, user_selection = Methods.input_found_multiple_decide(
                         search_results["HowManyFound"], len(search_results["Products"]))
                     max_pages = int(search_results["HowManyFound"] / 20) + 1
@@ -287,7 +291,7 @@ for index, component in enumerate(components):
                     print(f"Found {search_results['HowManyFound']} matching products.")
                 for i, p in enumerate(search_results["Products"]):
                     amount = component.quantity if component.quantity >= p.min_amount else p.min_amount
-                    p.printout(f"{i + 1}. '{component.name}'", component.quantity, amount)
+                    p.printout(f"{i + 1}.", component.quantity, amount)
                 if user_input is UserActions.PAGE_CHANGE:
                     user_input, user_selection = Methods.input_found_multiple_decide_with_page(
                         len(search_results["Products"]), search_page)
