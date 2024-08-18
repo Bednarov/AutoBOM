@@ -15,8 +15,7 @@ class UserActions(Enum):
     SEARCH = "Search"
     SKIP = "Skip"
     EXIT = "Exit"
-    PAGE_UP = "Page up"
-    PAGE_DOWN = "Page down"
+    PAGE_CHANGE = "Page change"
     MANUAL_SEARCH = "Manual search"
     SELECT = "Select"
 
@@ -27,6 +26,13 @@ class SearchResults(Enum):
     FOUND_ONE = "Found one"
     FOUND_MULTIPLE = "Found multiple"
     SEARCH_ERROR = "Search error"
+
+
+class SearchType(Enum):
+    SMD = "SMD"
+    SMD_WIDE = "SMD wide"
+    NORMAL = "Normal"
+    MANUAL = "Manual"
 
 
 class Methods:
@@ -152,7 +158,7 @@ class Methods:
     def input_found_multiple_decide(how_many_found: int, how_many_on_screen: int) -> tuple:
         while True:
             if how_many_found > 20:
-                print("> Select product to use via [1/2/3...], [n] for next page, [p] for previous page, [m] for "
+                print("> Select product to use via [1/2/3...], [p#] to change page number, [m] for "
                       "manual search, or [s] to skip, [e] to abort:")
             else:
                 print("> Select product to use via [1/2/3...], [m] for manual search, or [s] to skip, [e] to abort:")
@@ -168,14 +174,39 @@ class Methods:
             if user_input.isnumeric():
                 if 0 < int(user_input) <= how_many_on_screen:
                     return UserActions.SELECT, int(user_input)
-            if user_input in ["n", "N"] and how_many_found > 20:
-                print("Going to next page.")
+            if user_input[0] in ["p", "P"] and user_input[1:].isnumeric() and how_many_found > 20:
+                selected_page = int(user_input[1:])
+                print(f"Going to page {selected_page}.")
                 sleep(1)
-                return UserActions.PAGE_UP, 0
-            if user_input in ["p", "P"] and how_many_found > 20:
-                print("Going to previous page.")
+                return UserActions.PAGE_CHANGE, selected_page
+            if user_input in ["m", "M"]:
+                print("Manual search.")
                 sleep(1)
-                return UserActions.PAGE_DOWN, 0
+                return UserActions.MANUAL_SEARCH, 0
+            print("Invalid input.\n")
+
+    @staticmethod
+    def input_found_multiple_decide_with_page(how_many_on_screen: int, page: int) -> tuple:
+        while True:
+            print(f"> Page: {page}. Select product to use via [1/2/3...], [p#] to change page number, [m] for "
+                  f"manual search, or [s] to skip, [e] to abort:")
+            user_input = input()
+            if user_input in ["s", "S"]:
+                print("Skipping...")
+                sleep(1)
+                return UserActions.SKIP, 0
+            if user_input in ["e", "E"]:
+                print("Aborting program.")
+                sleep(1)
+                return UserActions.EXIT, 0
+            if user_input.isnumeric():
+                if 0 < int(user_input) <= how_many_on_screen:
+                    return UserActions.SELECT, int(user_input)
+            if user_input[0] in ["p", "P"] and user_input[1:].isnumeric():
+                selected_page = int(user_input[1:])
+                print(f"Going to page {selected_page}.")
+                sleep(1)
+                return UserActions.PAGE_CHANGE, selected_page
             if user_input in ["m", "M"]:
                 print("Manual search.")
                 sleep(1)
@@ -276,7 +307,8 @@ class Methods:
         }
 
     @staticmethod
-    def search_for_product(component_name: str, component_needed: int, auth: list, category: str, page: int) -> dict:
+    def search_for_product(component_name: str, component_needed: int, auth: list, category: str = None,
+                           page: int = None) -> dict:
         print(f"> Searching for '{component_name}'")
         search_results_raw = API.search_page(component_name, auth, category, page)
         search_status = Methods.get_search_status(search_results_raw["HowManyFound"])

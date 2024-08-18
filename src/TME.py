@@ -15,6 +15,9 @@ class API:
 
         client = Client(token, secret)
 
+        if len(product_name) > 40:
+            product_name = product_name[:40]
+
         parameters = {
             'SearchPlain': product_name,
             'Country': 'PL',
@@ -49,7 +52,7 @@ class API:
             }
 
     @staticmethod
-    def get_product_price_and_stock_multiple(symbol_list: list, auth: list) -> list:  # TODO: Handle not being able to request for more than 10 at a time
+    def get_product_price_and_stock_multiple(symbol_list: list, auth: list) -> list:
         sleep(0.5)
         print(f"Getting prices and stocks...")
         token = auth[0]
@@ -85,112 +88,6 @@ class API:
                 print(f"API error!: '{e.reason}'")
                 return []
         return symbol_stock_price_list
-
-    @staticmethod
-    def get_specific_product_info(product_name: str, auth: list, dont_print: bool = True) -> dict:
-        if not dont_print:
-            print(f"Getting information about '{product_name}'...")
-        sleep(0.1)
-        token = auth[0]
-        secret = auth[1]
-
-        client = Client(token, secret)
-        parameters = {
-            'SymbolList[0]': product_name,
-            'Country': 'PL',
-            'Language': 'en',
-        }
-
-        try:
-            response = urllib.request.urlopen(client.request('/Products/GetProducts', parameters))
-            response_str = response.read().decode('utf-8')
-            response_json = json.loads(response_str)
-
-            product = response_json["Data"]["ProductList"][0]
-            product_dict = {
-                "TME_Name": product["Symbol"],
-                "Producer": product["Producer"],
-                "Description": product["Description"],
-                "MinAmount": int(product["MinAmount"])
-            }
-            return product_dict
-
-        except urllib.error.URLError as e:
-            print(f"API error!: '{e.reason}'")
-            return {"Error": "API error."}
-
-    @staticmethod
-    def get_product_stock(product_name: str, auth: list, dont_print: bool = True) -> int:
-        sleep(0.5)
-        if not dont_print:
-            print(f"Getting '{product_name}' stock...")
-        token = auth[0]
-        secret = auth[1]
-
-        client = Client(token, secret)
-        parameters = {
-            'SymbolList[0]': product_name,
-            'Country': 'PL',
-            'Language': 'en',
-        }
-
-        try:
-            response = urllib.request.urlopen(client.request('/Products/GetStocks', parameters))
-            response_str = response.read().decode('utf-8')
-            response_json = json.loads(response_str)
-
-            product = response_json["Data"]["ProductList"][0]
-            stock_amount = int(product["Amount"])
-            if not dont_print:
-                print(f"Product stock: {stock_amount}")
-            return stock_amount
-
-        except urllib.error.URLError as e:
-            print(f"API error!: '{e.reason}'")
-            return -1
-
-    @staticmethod
-    def get_product_price_and_stock(product_name: str, auth: list, product_amount: int, dont_print: bool = True)\
-            -> tuple:
-        sleep(0.5)
-        if not dont_print:
-            print(f"Getting '{product_name}' prices and stock...")
-        token = auth[0]
-        secret = auth[1]
-
-        client = Client(token, secret)
-        parameters = {
-            'SymbolList[0]': product_name,
-            'Country': 'PL',
-            'Language': 'en',
-            'Currency': 'PLN'
-        }
-
-        try:
-            response = urllib.request.urlopen(client.request('/Products/GetPricesAndStocks', parameters))
-            response_str = response.read().decode('utf-8')
-            response_json = json.loads(response_str)
-
-            product = response_json["Data"]["ProductList"][0]
-            stock_amount = int(product["Amount"])
-            list_of_amounts = product["PriceList"]
-            price_per_needed = -2
-            for index, price_basket in enumerate(list_of_amounts):
-                if index == 0:
-                    if int(price_basket["Amount"]) > product_amount:
-                        price_per_needed = float(price_basket["PriceValue"]) * 1.23
-                        break
-                if int(price_basket["Amount"]) > product_amount:
-                    continue
-                price_per_needed = float(price_basket["PriceValue"]) * 1.23
-            if not dont_print:
-                print(f"Product stock: {stock_amount}")
-                print(f"Product price: {price_per_needed}")
-            return stock_amount, price_per_needed
-
-        except urllib.error.URLError as e:
-            print(f"API error!: '{e.reason}'")
-            return -1, -1
 
     @staticmethod
     def get_all_symbols(auth: list) -> list:
