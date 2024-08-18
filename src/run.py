@@ -20,7 +20,6 @@ components = Methods.input_how_many_copies(components)
 auth = Methods.read_auth_file(save_file_path)
 
 print("\n> Proceeding with API activity")
-all_symbols_list = API.get_all_symbols(auth)
 
 for index, component in enumerate(components):
     user_input = None
