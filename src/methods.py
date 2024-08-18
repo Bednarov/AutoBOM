@@ -18,6 +18,7 @@ class UserActions(Enum):
     PAGE_CHANGE = "Page change"
     MANUAL_SEARCH = "Manual search"
     SELECT = "Select"
+    ADD_TO_SEARCH = "Add to search"
 
 
 class SearchResults(Enum):
@@ -120,23 +121,29 @@ class Methods:
         return UserActions.SEARCH
 
     @staticmethod
-    def input_not_found_decide(product_name: str) -> UserActions:
+    def input_not_found_decide(product_name: str) -> tuple:
         print(f"No product named '{product_name}' was found.")
         while True:
-            print("\n> Press [m] for manual search, or [s] to skip, [e] to abort:")
+            print("\n> Press [a] to add search phrase, [m] for manual search, or [s] to skip, [e] to abort:")
             user_input = input()
             if user_input in ["s", "S"]:
                 print("Skipping...")
                 sleep(1)
-                return UserActions.SKIP
+                return UserActions.SKIP, 0
             if user_input in ["e", "E"]:
                 print("Aborting program.")
                 sleep(1)
-                return UserActions.EXIT
+                return UserActions.EXIT, 0
             if user_input in ["m", "M"]:
                 print("Manual search.")
                 sleep(1)
-                return UserActions.MANUAL_SEARCH
+                return UserActions.MANUAL_SEARCH, 0
+            if user_input in ["a", "A"]:
+                print("> Please type additional search phrase:")
+                search_phrase = input()
+                print(f"Adding '{search_phrase}' to search.")
+                sleep(1)
+                return UserActions.ADD_TO_SEARCH, search_phrase
             print("Invalid input.")
 
     @staticmethod
@@ -158,10 +165,11 @@ class Methods:
     def input_found_multiple_decide(how_many_found: int, how_many_on_screen: int) -> tuple:
         while True:
             if how_many_found > 20:
-                print("> Select product to use via [1/2/3...], [p#] to change page number, [m] for "
-                      "manual search, or [s] to skip, [e] to abort:")
+                print("> Select product to use via [1/2/3...], [a] to add search phrase, [p#] to change page number, "
+                      "[m] for manual search, or [s] to skip, [e] to abort:")
             else:
-                print("> Select product to use via [1/2/3...], [m] for manual search, or [s] to skip, [e] to abort:")
+                print("> Select product to use via [1/2/3...], [a] to add search phrase, [m] for manual search, or "
+                      "[s] to skip, [e] to abort:")
             user_input = input()
             if user_input in ["s", "S"]:
                 print("Skipping...")
@@ -183,13 +191,19 @@ class Methods:
                 print("Manual search.")
                 sleep(1)
                 return UserActions.MANUAL_SEARCH, 0
+            if user_input in ["a", "A"]:
+                print("> Please type additional search phrase:")
+                search_phrase = input()
+                print(f"Adding '{search_phrase}' to search.")
+                sleep(1)
+                return UserActions.ADD_TO_SEARCH, search_phrase
             print("Invalid input.\n")
 
     @staticmethod
     def input_found_multiple_decide_with_page(how_many_on_screen: int, page: int) -> tuple:
         while True:
-            print(f"> Page: {page}. Select product to use via [1/2/3...], [p#] to change page number, [m] for "
-                  f"manual search, or [s] to skip, [e] to abort:")
+            print(f"> Page: {page}. Select product to use via [1/2/3...], [a] to add search phrase, "
+                  f"[p#] to change page number, [m] for manual search, or [s] to skip, [e] to abort:")
             user_input = input()
             if user_input in ["s", "S"]:
                 print("Skipping...")
@@ -211,6 +225,12 @@ class Methods:
                 print("Manual search.")
                 sleep(1)
                 return UserActions.MANUAL_SEARCH, 0
+            if user_input in ["a", "A"]:
+                print("> Please type additional search phrase:")
+                search_phrase = input()
+                print(f"Adding '{search_phrase}' to search.")
+                sleep(1)
+                return UserActions.ADD_TO_SEARCH, search_phrase
             print("Invalid input.\n")
 
     @staticmethod
@@ -367,10 +387,12 @@ class Methods:
             return {
                 "Status": search_status,
                 "Products": product_list,
-                "HowManyFound": search_results_raw["HowManyFound"]
+                "HowManyFound": search_results_raw["HowManyFound"],
+                "SearchString": search_string
             }
         return {
             "Status": search_status,
             "Products": [],
-            "HowManyFound": search_results_raw["HowManyFound"]
+            "HowManyFound": search_results_raw["HowManyFound"],
+            "SearchString": search_string
         }
