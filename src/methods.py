@@ -39,7 +39,7 @@ class SearchType(Enum):
 class Methods:
     @staticmethod
     def parse_csv(file_path: str) -> list:
-        print("> Opening CSV file")
+        print("\n> Opening CSV file")
         with open(file_path, newline='', encoding='utf-16') as csvfile:
             reader = csv.reader(csvfile, delimiter='\t', quotechar='|')
             components = []
@@ -77,7 +77,7 @@ class Methods:
                     components.append(Component(name=new_component_name, designators=new_component_designators,
                                                 footprint=new_component_footprint, quantity=new_component_quantity,
                                                 typeof=new_component_typeof))
-            print(f"\nParsed {len(components)} different components.")
+            print(f"Parsed {len(components)} different components.")
             sleep(1)
             return components
 
